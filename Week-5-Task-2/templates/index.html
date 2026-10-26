@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice-Activated Calculator | Azure Speech Studio</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="calculator-app">
+        <!-- Title & Subtitle -->
+        <header class="calc-header">
+            <h1>Voice-Activated Calculator</h1>
+            <p>Speak mathematical commands or press magical speaking buttons</p>
+        </header>
+
+        <!-- Main Calculator Frame -->
+        <main class="calculator-frame">
+            <!-- Digital LCD Display -->
+            <div class="display-container">
+                <div id="calcDisplay" class="calc-display" title="Click to clear">0</div>
+            </div>
+
+            <!-- Body: Left Mic Button + Keypad Grid -->
+            <div class="calculator-body">
+                <!-- Dedicated Left Microphone Button -->
+                <div class="mic-column">
+                    <button id="micBtn" class="mic-btn" type="button" title="Click to speak calculation command (e.g. 'Five plus two is')">
+                        <span class="mic-icon">🎙</span>
+                        <span class="mic-label">Voice</span>
+                    </button>
+                    <div id="micPulse" class="mic-status-text hidden">Listening...</div>
+                </div>
+
+                <!-- 4x4 Calculator Keypad -->
+                <div class="keypad-grid">
+                    <!-- Row 1 -->
+                    <button type="button" class="btn btn-num" data-val="7" data-speech="Seven">7</button>
+                    <button type="button" class="btn btn-num" data-val="8" data-speech="Eight">8</button>
+                    <button type="button" class="btn btn-num" data-val="9" data-speech="Nine">9</button>
+                    <button type="button" class="btn btn-op" data-op="/" data-speech="Over">÷</button>
+
+                    <!-- Row 2 -->
+                    <button type="button" class="btn btn-num" data-val="4" data-speech="Four">4</button>
+                    <button type="button" class="btn btn-num" data-val="5" data-speech="Five">5</button>
+                    <button type="button" class="btn btn-num" data-val="6" data-speech="Six">6</button>
+                    <button type="button" class="btn btn-op" data-op="*" data-speech="Times">x</button>
+
+                    <!-- Row 3 -->
+                    <button type="button" class="btn btn-num" data-val="1" data-speech="One">1</button>
+                    <button type="button" class="btn btn-num" data-val="2" data-speech="Two">2</button>
+                    <button type="button" class="btn btn-num" data-val="3" data-speech="Three">3</button>
+                    <button type="button" class="btn btn-op" data-op="-" data-speech="Minus">-</button>
+
+                    <!-- Row 4 -->
+                    <button type="button" class="btn btn-num" data-val="0" data-speech="Zero">0</button>
+                    <button type="button" class="btn btn-num" data-val="." data-speech="Point">.</button>
+                    <button type="button" class="btn btn-equals" data-action="equals" data-speech="Is">=</button>
+                    <button type="button" class="btn btn-op" data-op="+" data-speech="Plus">+</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Command & Feedback Status Console -->
+        <div class="status-console">
+            <div id="voiceStatus" class="voice-status-box">
+                <span class="status-title">Status:</span>
+                <span id="statusText">Ready. Click the microphone or press calculator buttons.</span>
+            </div>
+            <div id="historyLog" class="history-log hidden">
+                <span class="history-label">Recognized:</span>
+                <span id="historyText"></span>
+            </div>
+        </div>
+
+        <!-- Hidden Audio Player for Speech Outputs -->
+        <audio id="ttsAudioPlayer" preload="auto"></audio>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
+

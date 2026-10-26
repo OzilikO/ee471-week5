@@ -2,10 +2,11 @@
 *.env
 __pycache__/
 *.pyc
+static/*.wav
+static/*.mp3
 *.wav
 *.mp3
 *.ogg
 *.webm
 uploads/
 .venv/
-
