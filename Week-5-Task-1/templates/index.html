@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Speech-to-Text | Azure Cognitive Services</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="card-container">
+        <!-- Header matching Speech-to-Text mockup -->
+        <header class="app-header">
+            <div class="title-row">
+                <span class="icon">🎙</span>
+                <h1>Speech-to-Text</h1>
+            </div>
+            <p class="subtitle">Powered by Azure Cognitive Services</p>
+        </header>
+
+        <!-- Form Section -->
+        <section class="form-section">
+            <label>Record or upload audio to convert to text:</label>
+
+            <!-- Recording & File Selection Controls -->
+            <div class="stt-controls-row">
+                <button id="startRecordBtn" class="btn btn-record" type="button">
+                    <span class="btn-icon">🎤</span> Start Recording
+                </button>
+                <button id="stopRecordBtn" class="btn btn-stop" type="button" disabled>
+                    <span class="btn-icon">⏹</span> Stop Recording
+                </button>
+                <div class="file-input-wrapper">
+                    <input id="audioFileInput" type="file" accept="audio/*,.wav,.mp3">
+                </div>
+            </div>
+
+            <!-- Active Recording Indicator -->
+            <div id="recordingIndicator" class="recording-badge hidden">
+                <span class="recording-dot"></span> Recording...
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-row">
+                <button id="transcribeBtn" class="btn btn-primary" type="button">
+                    <span class="btn-icon">🎙</span> Transcribe Audio
+                </button>
+                <button id="clearSttBtn" class="btn btn-secondary" type="button">
+                    Clear
+                </button>
+            </div>
+        </section>
+
+        <!-- Transcription Result Container -->
+        <section id="transcriptionSection" class="transcription-section hidden">
+            <h2>Transcription:</h2>
+            <div class="transcription-box">
+                <p id="transcriptionText" class="transcription-content"></p>
+                <button id="copyTextBtn" class="btn btn-copy" type="button" title="Copy text to clipboard">
+                    <span class="btn-icon">📋</span> Copy Text
+                </button>
+            </div>
+        </section>
+
+        <!-- Status Message Banner -->
+        <div id="statusMessage" class="status-box hidden" role="status"></div>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
