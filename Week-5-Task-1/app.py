@@ -4,23 +4,22 @@ import tempfile
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
+
+# Move load_dotenv() to the top directly after imports
+load_dotenv(dotenv_path=Path(__file__).resolve().parent / ".env")
+
 import azure.cognitiveservices.speech as speechsdk
 import azure.cognitiveservices.speech.translation as translation_sdk
 import azure.cognitiveservices.speech.transcription as transcription_sdk
 
-# Determine base directory and load .env file
-BASE_DIR = Path(__file__).resolve().parent
-ENV_PATH = BASE_DIR / ".env"
-load_dotenv(dotenv_path=ENV_PATH)
-
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
-# Ensure static folder exists for saving audio outputs
-STATIC_DIR = BASE_DIR / "static"
+# Ensure static folder exists for saving generated audio files
+STATIC_DIR = Path(__file__).resolve().parent / "static"
 STATIC_DIR.mkdir(parents=True, exist_ok=True)
 
 # Ensure temporary upload directory exists
-UPLOAD_DIR = BASE_DIR / "uploads"
+UPLOAD_DIR = Path(__file__).resolve().parent / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -29,6 +28,17 @@ def get_speech_credentials():
     speech_key = os.getenv("SPEECH_KEY")
     speech_region = os.getenv("SPEECH_REGION")
     return speech_key, speech_region
+
+
+def get_speech_config():
+    """Initialize and return an Azure SpeechConfig instance using environment variables.
+
+    Eliminates repeated configuration boilerplate across endpoints.
+    """
+    key, region = get_speech_credentials()
+    if not key or not region:
+        return None
+    return speechsdk.SpeechConfig(subscription=key, region=region)
 
 
 def save_uploaded_audio(audio_file):
@@ -41,9 +51,31 @@ def save_uploaded_audio(audio_file):
     return temp_filepath
 
 
+# ========================================================
+# Error Handlers (Consistent JSON schema: {"error": "<message>"})
+# ========================================================
+@app.errorhandler(400)
+def bad_request_error(error):
+    message = getattr(error, "description", "Bad Request.")
+    return jsonify({"error": message}), 400
+
+
+@app.errorhandler(404)
+def not_found_error(error):
+    return jsonify({"error": "Resource not found."}), 404
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return jsonify({"error": "Internal server error occurred."}), 500
+
+
+# ========================================================
+# Web App Index Route
+# ========================================================
 @app.route("/")
 def index():
-    """Serves the unified frontend page."""
+    """Serves the unified frontend application."""
     return render_template("index.html")
 
 
@@ -62,8 +94,8 @@ def text_to_speech():
     if not text:
         return jsonify({"error": "Text cannot be empty."}), 400
 
-    speech_key, speech_region = get_speech_credentials()
-    if not speech_key or not speech_region:
+    speech_config = get_speech_config()
+    if not speech_config:
         return jsonify({
             "error": "Azure Speech credentials (SPEECH_KEY, SPEECH_REGION) are missing in .env."
         }), 500
@@ -72,12 +104,7 @@ def text_to_speech():
     output_filepath = STATIC_DIR / output_filename
 
     try:
-        speech_config = speechsdk.SpeechConfig(
-            subscription=speech_key,
-            region=speech_region
-        )
         speech_config.speech_synthesis_voice_name = "en-US-JennyNeural"
-
         audio_config = speechsdk.audio.AudioOutputConfig(filename=str(output_filepath))
         synthesizer = speechsdk.SpeechSynthesizer(speech_config=speech_config, audio_config=audio_config)
 
@@ -123,8 +150,8 @@ def speech_to_text():
             "error": f"Unsupported audio format '{file_ext}'. Please upload a .wav or .mp3 file."
         }), 400
 
-    speech_key, speech_region = get_speech_credentials()
-    if not speech_key or not speech_region:
+    speech_config = get_speech_config()
+    if not speech_config:
         return jsonify({
             "error": "Azure Speech credentials (SPEECH_KEY, SPEECH_REGION) are missing in .env."
         }), 500
@@ -132,7 +159,6 @@ def speech_to_text():
     temp_filepath = save_uploaded_audio(audio_file)
 
     try:
-        speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
         audio_config = speechsdk.audio.AudioConfig(filename=temp_filepath)
         recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
 
@@ -169,21 +195,17 @@ def speech_to_text():
 
 
 # ========================================================
-# 3. Speech Translation Endpoint (Part 4)
+# 3. Speech Translation Endpoint
 # ========================================================
 @app.route("/api/translate", methods=["POST"])
 def translate_speech():
-    """Translates audio or text to a target language using TranslationRecognizer.
-
-    Returns translated text and synthesized audio of the translated text.
-    """
-    speech_key, speech_region = get_speech_credentials()
-    if not speech_key or not speech_region:
+    """Translates audio or text to a target language using TranslationRecognizer."""
+    key, region = get_speech_credentials()
+    if not key or not region:
         return jsonify({
             "error": "Azure Speech credentials (SPEECH_KEY, SPEECH_REGION) are missing in .env."
         }), 500
 
-    # Read target and source language
     target_lang = "tr"
     source_lang = "en-US"
     audio_file = None
@@ -204,14 +226,13 @@ def translate_speech():
     cleanup_temp_audio = False
 
     try:
-        # If user gave text, synthesize to temporary audio to run TranslationRecognizer
         if not audio_file and input_text:
             temp_synth = tempfile.NamedTemporaryFile(delete=False, suffix=".wav", dir=UPLOAD_DIR)
             temp_audio_path = temp_synth.name
             temp_synth.close()
             cleanup_temp_audio = True
 
-            synth_cfg = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
+            synth_cfg = get_speech_config()
             synth_out = speechsdk.audio.AudioOutputConfig(filename=temp_audio_path)
             synth = speechsdk.SpeechSynthesizer(speech_config=synth_cfg, audio_config=synth_out)
             synth_res = synth.speak_text_async(input_text).get()
@@ -224,10 +245,9 @@ def translate_speech():
         else:
             return jsonify({"error": "Please provide an audio file or text to translate."}), 400
 
-        # Run Speech Translation Recognizer
         trans_cfg = translation_sdk.SpeechTranslationConfig(
-            subscription=speech_key,
-            region=speech_region
+            subscription=key,
+            region=region
         )
         trans_cfg.speech_recognition_language = source_lang
         trans_cfg.add_target_language(target_lang)
@@ -244,7 +264,6 @@ def translate_speech():
             source_text = result.text
             translated_text = result.translations.get(target_lang, "")
 
-            # Voice mapping for synthesis of translated text
             voice_map = {
                 "tr": "tr-TR-AhmetNeural",
                 "de": "de-DE-KatjaNeural",
@@ -257,11 +276,10 @@ def translate_speech():
             }
             target_voice = voice_map.get(target_lang, "en-US-JennyNeural")
 
-            # Synthesize translated text to audio
             translated_audio_filename = "translated_output.wav"
             translated_audio_filepath = STATIC_DIR / translated_audio_filename
 
-            tts_cfg = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
+            tts_cfg = get_speech_config()
             tts_cfg.speech_synthesis_voice_name = target_voice
             tts_out = speechsdk.audio.AudioOutputConfig(filename=str(translated_audio_filepath))
             tts_synth = speechsdk.SpeechSynthesizer(speech_config=tts_cfg, audio_config=tts_out)
@@ -279,7 +297,9 @@ def translate_speech():
             return jsonify({"error": "No speech recognized for translation."}), 400
         elif result.reason == translation_sdk.ResultReason.Canceled:
             cancellation = result.cancellation_details
-            return jsonify({"error": f"Translation canceled: {cancellation.reason} - {cancellation.error_details}"}), 500
+            return jsonify({
+                "error": f"Translation canceled: {cancellation.reason} - {cancellation.error_details}"
+            }), 500
         else:
             return jsonify({"error": f"Translation returned unexpected result: {result.reason}"}), 500
 
@@ -294,11 +314,11 @@ def translate_speech():
 
 
 # ========================================================
-# 4. Conversation Diarization Endpoint (Part 4)
+# 4. Conversation Diarization Endpoint
 # ========================================================
 @app.route("/api/diarization", methods=["POST"])
 def diarize_audio():
-    """Transcribes multi-speaker audio with speaker identification (diarization)."""
+    """Transcribes multi-speaker audio with speaker identification."""
     if "audio" not in request.files and "file" not in request.files:
         return jsonify({"error": "Please provide an audio file for diarization."}), 400
 
@@ -306,8 +326,8 @@ def diarize_audio():
     if not audio_file or not audio_file.filename:
         return jsonify({"error": "Empty audio file received."}), 400
 
-    speech_key, speech_region = get_speech_credentials()
-    if not speech_key or not speech_region:
+    speech_config = get_speech_config()
+    if not speech_config:
         return jsonify({
             "error": "Azure Speech credentials (SPEECH_KEY, SPEECH_REGION) are missing in .env."
         }), 500
@@ -315,7 +335,6 @@ def diarize_audio():
     temp_filepath = save_uploaded_audio(audio_file)
 
     try:
-        speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
         audio_config = speechsdk.audio.AudioConfig(filename=temp_filepath)
         transcriber = transcription_sdk.ConversationTranscriber(
             speech_config=speech_config,
@@ -357,7 +376,6 @@ def diarize_audio():
 
         transcriber.start_transcribing_async()
 
-        # Allow sufficient time for the conversation transcriber to process the file
         timeout = time.time() + 25
         while not done and time.time() < timeout:
             time.sleep(0.15)
@@ -389,7 +407,7 @@ def diarize_audio():
 
 
 # ========================================================
-# 5. Pronunciation Assessment Endpoint (Part 4)
+# 5. Pronunciation Assessment Endpoint
 # ========================================================
 @app.route("/api/pronunciation-assessment", methods=["POST"])
 def pronunciation_assessment():
@@ -403,8 +421,8 @@ def pronunciation_assessment():
     if not reference_text:
         return jsonify({"error": "Reference text is required for pronunciation assessment."}), 400
 
-    speech_key, speech_region = get_speech_credentials()
-    if not speech_key or not speech_region:
+    speech_config = get_speech_config()
+    if not speech_config:
         return jsonify({
             "error": "Azure Speech credentials (SPEECH_KEY, SPEECH_REGION) are missing in .env."
         }), 500
@@ -412,7 +430,6 @@ def pronunciation_assessment():
     temp_filepath = save_uploaded_audio(audio_file)
 
     try:
-        speech_config = speechsdk.SpeechConfig(subscription=speech_key, region=speech_region)
         audio_config = speechsdk.audio.AudioConfig(filename=temp_filepath)
 
         pronunciation_config = speechsdk.PronunciationAssessmentConfig(
@@ -465,4 +482,4 @@ def pronunciation_assessment():
 
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    app.run(debug=True, port=5000)

@@ -1,20 +1,41 @@
 document.addEventListener("DOMContentLoaded", () => {
     // ========================================================
-    // 1. Tab Navigation Controller (All 5 Features)
+    // Status Message Helper: showStatus(message, isError)
+    // ========================================================
+    let currentStatusElem = document.getElementById("ttsStatusMessage");
+
+    function showStatus(message, isError) {
+        if (!currentStatusElem) return;
+        if (!message) {
+            currentStatusElem.textContent = "";
+            currentStatusElem.className = "status-box hidden";
+            return;
+        }
+        const prefix = isError ? "⚠ " : "✓ ";
+        currentStatusElem.textContent = (message.startsWith("✓") || message.startsWith("⚠"))
+            ? message
+            : (prefix + message);
+        currentStatusElem.className = `status-box ${isError ? "error" : "success"}`;
+        currentStatusElem.classList.remove("hidden");
+    }
+
+    // ========================================================
+    // 1. Tab Navigation
     // ========================================================
     const tabs = [
-        { btn: document.getElementById("tabTtsBtn"), panel: document.getElementById("ttsPanel") },
-        { btn: document.getElementById("tabSttBtn"), panel: document.getElementById("sttPanel") },
-        { btn: document.getElementById("tabTransBtn"), panel: document.getElementById("transPanel") },
-        { btn: document.getElementById("tabDiarBtn"), panel: document.getElementById("diarPanel") },
-        { btn: document.getElementById("tabPronBtn"), panel: document.getElementById("pronPanel") }
+        { btn: document.getElementById("tabTtsBtn"), panel: document.getElementById("ttsPanel"), statusElem: document.getElementById("ttsStatusMessage") },
+        { btn: document.getElementById("tabSttBtn"), panel: document.getElementById("sttPanel"), statusElem: document.getElementById("sttStatusMessage") },
+        { btn: document.getElementById("tabTransBtn"), panel: document.getElementById("transPanel"), statusElem: document.getElementById("transStatusMessage") },
+        { btn: document.getElementById("tabDiarBtn"), panel: document.getElementById("diarPanel"), statusElem: document.getElementById("diarStatusMessage") },
+        { btn: document.getElementById("tabPronBtn"), panel: document.getElementById("pronPanel"), statusElem: document.getElementById("pronStatusMessage") }
     ];
 
     function activateTab(targetBtn) {
-        tabs.forEach(({ btn, panel }) => {
+        tabs.forEach(({ btn, panel, statusElem }) => {
             if (btn === targetBtn) {
                 btn.classList.add("active");
                 panel.classList.remove("hidden");
+                currentStatusElem = statusElem;
             } else {
                 btn.classList.remove("active");
                 panel.classList.add("hidden");
@@ -25,18 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
     tabs.forEach(({ btn }) => {
         btn.addEventListener("click", () => activateTab(btn));
     });
-
-    // Utility: Show/Clear Status Messages
-    function showStatus(elem, message, type) {
-        elem.textContent = message;
-        elem.className = `status-box ${type}`;
-        elem.classList.remove("hidden");
-    }
-
-    function clearStatus(elem) {
-        elem.textContent = "";
-        elem.className = "status-box hidden";
-    }
 
     // ========================================================
     // 2. Reusable In-Browser WAV Audio Recorder
@@ -126,12 +135,76 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ========================================================
-    // 3. Text-to-Speech Controller
+    // 3. Modular API Service Functions
+    // ========================================================
+    async function apiTextToSpeech(text) {
+        const res = await fetch("/api/text-to-speech", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to synthesize speech.");
+        return data;
+    }
+
+    async function apiSpeechToText(file) {
+        const formData = new FormData();
+        formData.append("audio", file, file.name || "audio.wav");
+        const res = await fetch("/api/speech-to-text", {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to transcribe audio.");
+        return data;
+    }
+
+    async function apiTranslate(payload, isJson = false) {
+        const options = { method: "POST" };
+        if (isJson) {
+            options.headers = { "Content-Type": "application/json" };
+            options.body = JSON.stringify(payload);
+        } else {
+            options.body = payload;
+        }
+        const res = await fetch("/api/translate", options);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Translation failed.");
+        return data;
+    }
+
+    async function apiDiarization(file) {
+        const formData = new FormData();
+        formData.append("audio", file, file.name || "conversation.wav");
+        const res = await fetch("/api/diarization", {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Diarization failed.");
+        return data;
+    }
+
+    async function apiPronunciationAssessment(file, referenceText) {
+        const formData = new FormData();
+        formData.append("audio", file, file.name || "attempt.wav");
+        formData.append("reference_text", referenceText);
+        const res = await fetch("/api/pronunciation-assessment", {
+            method: "POST",
+            body: formData
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Pronunciation assessment failed.");
+        return data;
+    }
+
+    // ========================================================
+    // 4. Feature: Text-to-Speech
     // ========================================================
     const textInput = document.getElementById("textInput");
     const synthesizeBtn = document.getElementById("synthesizeBtn");
     const clearTtsBtn = document.getElementById("clearTtsBtn");
-    const ttsStatusMessage = document.getElementById("ttsStatusMessage");
     const audioSection = document.getElementById("audioSection");
     const audioPlayer = document.getElementById("audioPlayer");
     const downloadBtn = document.getElementById("downloadBtn");
@@ -139,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
     synthesizeBtn.addEventListener("click", async () => {
         const text = textInput.value.trim();
         if (!text) {
-            showStatus(ttsStatusMessage, "Please enter some text to synthesize.", "error");
+            showStatus("Please enter some text to synthesize.", true);
             textInput.focus();
             return;
         }
@@ -147,26 +220,17 @@ document.addEventListener("DOMContentLoaded", () => {
         synthesizeBtn.disabled = true;
         clearTtsBtn.disabled = true;
         synthesizeBtn.innerHTML = '<span class="btn-icon">⏳</span> Synthesizing...';
-        showStatus(ttsStatusMessage, "Synthesizing audio with Azure Speech SDK...", "info");
+        showStatus("Synthesizing audio with Azure Speech SDK...", false);
 
         try {
-            const response = await fetch("/api/text-to-speech", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text })
-            });
-
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || "Failed to synthesize speech.");
-
-            showStatus(ttsStatusMessage, "✓ Speech synthesized successfully!", "success");
+            const data = await apiTextToSpeech(text);
+            showStatus("Speech synthesized successfully!", false);
             audioPlayer.src = `${data.audio_url}?t=${Date.now()}`;
             downloadBtn.href = data.audio_url;
             audioSection.classList.remove("hidden");
             audioPlayer.load();
-
         } catch (error) {
-            showStatus(ttsStatusMessage, `⚠ ${error.message}`, "error");
+            showStatus(error.message, true);
         } finally {
             synthesizeBtn.disabled = false;
             clearTtsBtn.disabled = false;
@@ -176,7 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     clearTtsBtn.addEventListener("click", () => {
         textInput.value = "";
-        clearStatus(ttsStatusMessage);
+        showStatus("", false);
         audioPlayer.pause();
         audioPlayer.removeAttribute("src");
         audioPlayer.load();
@@ -185,7 +249,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ========================================================
-    // 4. Speech-to-Text Controller
+    // 5. Feature: Speech-to-Text
     // ========================================================
     const startRecordBtn = document.getElementById("startRecordBtn");
     const stopRecordBtn = document.getElementById("stopRecordBtn");
@@ -196,7 +260,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const transcriptionSection = document.getElementById("transcriptionSection");
     const transcriptionText = document.getElementById("transcriptionText");
     const copyTextBtn = document.getElementById("copyTextBtn");
-    const sttStatusMessage = document.getElementById("sttStatusMessage");
 
     const sttRecorder = new WavAudioRecorder();
     let sttBlob = null;
@@ -204,14 +267,14 @@ document.addEventListener("DOMContentLoaded", () => {
     startRecordBtn.addEventListener("click", async () => {
         try {
             sttBlob = null;
-            clearStatus(sttStatusMessage);
+            showStatus("", false);
             await sttRecorder.start();
             startRecordBtn.disabled = true;
             stopRecordBtn.disabled = false;
             recordingIndicator.classList.remove("hidden");
             audioFileInput.value = "";
         } catch (err) {
-            showStatus(sttStatusMessage, "Microphone access denied or unavailable.", "error");
+            showStatus("Microphone access denied or unavailable.", true);
         }
     });
 
@@ -220,13 +283,13 @@ document.addEventListener("DOMContentLoaded", () => {
         startRecordBtn.disabled = false;
         stopRecordBtn.disabled = true;
         recordingIndicator.classList.add("hidden");
-        showStatus(sttStatusMessage, "Recording captured! Click 'Transcribe Audio'.", "info");
+        showStatus("Recording captured! Click 'Transcribe Audio'.", false);
     });
 
     audioFileInput.addEventListener("change", () => {
         if (audioFileInput.files.length) {
             sttBlob = null;
-            clearStatus(sttStatusMessage);
+            showStatus("", false);
         }
     });
 
@@ -234,32 +297,22 @@ document.addEventListener("DOMContentLoaded", () => {
         const fileToSend = audioFileInput.files.length ? audioFileInput.files[0] : (sttBlob ? new File([sttBlob], "recording.wav", { type: "audio/wav" }) : null);
 
         if (!fileToSend) {
-            showStatus(sttStatusMessage, "Please record speech or choose an audio file first.", "error");
+            showStatus("Please record speech or choose an audio file first.", true);
             return;
         }
 
         transcribeBtn.disabled = true;
         clearSttBtn.disabled = true;
         transcribeBtn.innerHTML = '<span class="btn-icon">⏳</span> Transcribing...';
-        showStatus(sttStatusMessage, "Transcribing with Azure Speech Recognizer...", "info");
-
-        const formData = new FormData();
-        formData.append("audio", fileToSend, fileToSend.name || "audio.wav");
+        showStatus("Transcribing with Azure Speech Recognizer...", false);
 
         try {
-            const response = await fetch("/api/speech-to-text", {
-                method: "POST",
-                body: formData
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || "Failed to transcribe audio.");
-
+            const data = await apiSpeechToText(fileToSend);
             transcriptionText.textContent = data.transcription || "No speech detected.";
             transcriptionSection.classList.remove("hidden");
-            showStatus(sttStatusMessage, "✓ Audio transcribed successfully!", "success");
-
+            showStatus("Audio transcribed successfully!", false);
         } catch (error) {
-            showStatus(sttStatusMessage, `⚠ ${error.message}`, "error");
+            showStatus(error.message, true);
         } finally {
             transcribeBtn.disabled = false;
             clearSttBtn.disabled = false;
@@ -279,7 +332,7 @@ document.addEventListener("DOMContentLoaded", () => {
     clearSttBtn.addEventListener("click", () => {
         audioFileInput.value = "";
         sttBlob = null;
-        clearStatus(sttStatusMessage);
+        showStatus("", false);
         transcriptionText.textContent = "";
         transcriptionSection.classList.add("hidden");
         recordingIndicator.classList.add("hidden");
@@ -288,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ========================================================
-    // 5. Speech Translation Controller (Part 4)
+    // 6. Feature: Speech Translation
     // ========================================================
     const transSourceLang = document.getElementById("transSourceLang");
     const transTargetLang = document.getElementById("transTargetLang");
@@ -303,7 +356,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const transTextInput = document.getElementById("transTextInput");
     const translateSubmitBtn = document.getElementById("translateSubmitBtn");
     const clearTransBtn = document.getElementById("clearTransBtn");
-    const transStatusMessage = document.getElementById("transStatusMessage");
     const transOutputSection = document.getElementById("transOutputSection");
     const transSourceText = document.getElementById("transSourceText");
     const transResultText = document.getElementById("transResultText");
@@ -311,7 +363,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const transAudioPlayer = document.getElementById("transAudioPlayer");
     const downloadTransAudioBtn = document.getElementById("downloadTransAudioBtn");
 
-    let translationMode = "audio"; // "audio" | "text"
+    let translationMode = "audio";
     const transRecorder = new WavAudioRecorder();
     let transBlob = null;
 
@@ -334,14 +386,14 @@ document.addEventListener("DOMContentLoaded", () => {
     transStartRecordBtn.addEventListener("click", async () => {
         try {
             transBlob = null;
-            clearStatus(transStatusMessage);
+            showStatus("", false);
             await transRecorder.start();
             transStartRecordBtn.disabled = true;
             transStopRecordBtn.disabled = false;
             transRecordingIndicator.classList.remove("hidden");
             transAudioFileInput.value = "";
         } catch (err) {
-            showStatus(transStatusMessage, "Microphone access denied or unavailable.", "error");
+            showStatus("Microphone access denied or unavailable.", true);
         }
     });
 
@@ -350,7 +402,7 @@ document.addEventListener("DOMContentLoaded", () => {
         transStartRecordBtn.disabled = false;
         transStopRecordBtn.disabled = true;
         transRecordingIndicator.classList.add("hidden");
-        showStatus(transStatusMessage, "Speech captured! Click 'Translate'.", "info");
+        showStatus("Speech captured! Click 'Translate'.", false);
     });
 
     translateSubmitBtn.addEventListener("click", async () => {
@@ -360,38 +412,24 @@ document.addEventListener("DOMContentLoaded", () => {
         translateSubmitBtn.disabled = true;
         clearTransBtn.disabled = true;
         translateSubmitBtn.innerHTML = '<span class="btn-icon">⏳</span> Translating...';
-        showStatus(transStatusMessage, "Translating with Azure TranslationRecognizer...", "info");
+        showStatus("Translating with Azure TranslationRecognizer...", false);
 
         try {
-            let response = null;
-
+            let data = null;
             if (translationMode === "text") {
                 const text = transTextInput.value.trim();
                 if (!text) throw new Error("Please enter source text to translate.");
-
-                response = await fetch("/api/translate", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text, target_lang: targetLang, source_lang: sourceLang })
-                });
+                data = await apiTranslate({ text, target_lang: targetLang, source_lang: sourceLang }, true);
             } else {
                 const fileToSend = transAudioFileInput.files.length ? transAudioFileInput.files[0] : (transBlob ? new File([transBlob], "speech.wav", { type: "audio/wav" }) : null);
-
                 if (!fileToSend) throw new Error("Please record speech or choose an audio file first.");
 
                 const formData = new FormData();
                 formData.append("audio", fileToSend, fileToSend.name || "speech.wav");
                 formData.append("target_lang", targetLang);
                 formData.append("source_lang", sourceLang);
-
-                response = await fetch("/api/translate", {
-                    method: "POST",
-                    body: formData
-                });
+                data = await apiTranslate(formData, false);
             }
-
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || "Translation failed.");
 
             transSourceText.textContent = data.source_text || "(Text Input)";
             transResultText.textContent = data.translated_text || "No translation output.";
@@ -403,10 +441,9 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             transOutputSection.classList.remove("hidden");
-            showStatus(transStatusMessage, "✓ Translation completed successfully!", "success");
-
+            showStatus("Translation completed successfully!", false);
         } catch (error) {
-            showStatus(transStatusMessage, `⚠ ${error.message}`, "error");
+            showStatus(error.message, true);
         } finally {
             translateSubmitBtn.disabled = false;
             clearTransBtn.disabled = false;
@@ -427,7 +464,7 @@ document.addEventListener("DOMContentLoaded", () => {
         transTextInput.value = "";
         transAudioFileInput.value = "";
         transBlob = null;
-        clearStatus(transStatusMessage);
+        showStatus("", false);
         transOutputSection.classList.add("hidden");
         transRecordingIndicator.classList.add("hidden");
         transStartRecordBtn.disabled = false;
@@ -435,7 +472,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ========================================================
-    // 6. Diarization Controller (Part 4)
+    // 7. Feature: Conversation Diarization
     // ========================================================
     const diarStartRecordBtn = document.getElementById("diarStartRecordBtn");
     const diarStopRecordBtn = document.getElementById("diarStopRecordBtn");
@@ -443,7 +480,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const diarRecordingIndicator = document.getElementById("diarRecordingIndicator");
     const diarizeSubmitBtn = document.getElementById("diarizeSubmitBtn");
     const clearDiarBtn = document.getElementById("clearDiarBtn");
-    const diarStatusMessage = document.getElementById("diarStatusMessage");
     const diarOutputSection = document.getElementById("diarOutputSection");
     const diarTranscriptList = document.getElementById("diarTranscriptList");
     const copyDiarBtn = document.getElementById("copyDiarBtn");
@@ -455,14 +491,14 @@ document.addEventListener("DOMContentLoaded", () => {
     diarStartRecordBtn.addEventListener("click", async () => {
         try {
             diarBlob = null;
-            clearStatus(diarStatusMessage);
+            showStatus("", false);
             await diarRecorder.start();
             diarStartRecordBtn.disabled = true;
             diarStopRecordBtn.disabled = false;
             diarRecordingIndicator.classList.remove("hidden");
             diarAudioFileInput.value = "";
         } catch (err) {
-            showStatus(diarStatusMessage, "Microphone access denied or unavailable.", "error");
+            showStatus("Microphone access denied or unavailable.", true);
         }
     });
 
@@ -471,34 +507,24 @@ document.addEventListener("DOMContentLoaded", () => {
         diarStartRecordBtn.disabled = false;
         diarStopRecordBtn.disabled = true;
         diarRecordingIndicator.classList.add("hidden");
-        showStatus(diarStatusMessage, "Audio captured! Click 'Run Diarization'.", "info");
+        showStatus("Audio captured! Click 'Run Diarization'.", false);
     });
 
     diarizeSubmitBtn.addEventListener("click", async () => {
         const fileToSend = diarAudioFileInput.files.length ? diarAudioFileInput.files[0] : (diarBlob ? new File([diarBlob], "conversation.wav", { type: "audio/wav" }) : null);
 
         if (!fileToSend) {
-            showStatus(diarStatusMessage, "Please upload or record multi-speaker audio.", "error");
+            showStatus("Please upload or record multi-speaker audio.", true);
             return;
         }
 
         diarizeSubmitBtn.disabled = true;
         clearDiarBtn.disabled = true;
         diarizeSubmitBtn.innerHTML = '<span class="btn-icon">⏳</span> Analyzing Speakers...';
-        showStatus(diarStatusMessage, "Running Azure ConversationTranscriber diarization...", "info");
-
-        const formData = new FormData();
-        formData.append("audio", fileToSend, fileToSend.name || "conversation.wav");
+        showStatus("Running Azure ConversationTranscriber diarization...", false);
 
         try {
-            const response = await fetch("/api/diarization", {
-                method: "POST",
-                body: formData
-            });
-
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || "Diarization failed.");
-
+            const data = await apiDiarization(fileToSend);
             diarTranscriptList.innerHTML = "";
             fullDiarTranscriptText = data.formatted_transcript || "";
 
@@ -520,10 +546,9 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             diarOutputSection.classList.remove("hidden");
-            showStatus(diarStatusMessage, "✓ Diarization completed successfully!", "success");
-
+            showStatus("Diarization completed successfully!", false);
         } catch (error) {
-            showStatus(diarStatusMessage, `⚠ ${error.message}`, "error");
+            showStatus(error.message, true);
         } finally {
             diarizeSubmitBtn.disabled = false;
             clearDiarBtn.disabled = false;
@@ -544,7 +569,7 @@ document.addEventListener("DOMContentLoaded", () => {
         diarBlob = null;
         diarTranscriptList.innerHTML = "";
         fullDiarTranscriptText = "";
-        clearStatus(diarStatusMessage);
+        showStatus("", false);
         diarOutputSection.classList.add("hidden");
         diarRecordingIndicator.classList.add("hidden");
         diarStartRecordBtn.disabled = false;
@@ -552,7 +577,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // ========================================================
-    // 7. Pronunciation Assessment Controller (Part 4)
+    // 8. Feature: Pronunciation Assessment
     // ========================================================
     const pronReferenceText = document.getElementById("pronReferenceText");
     const pronStartRecordBtn = document.getElementById("pronStartRecordBtn");
@@ -561,7 +586,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const pronRecordingIndicator = document.getElementById("pronRecordingIndicator");
     const pronAssessSubmitBtn = document.getElementById("pronAssessSubmitBtn");
     const clearPronBtn = document.getElementById("clearPronBtn");
-    const pronStatusMessage = document.getElementById("pronStatusMessage");
     const pronOutputSection = document.getElementById("pronOutputSection");
     const scoreOverall = document.getElementById("scoreOverall");
     const scoreAccuracy = document.getElementById("scoreAccuracy");
@@ -575,14 +599,14 @@ document.addEventListener("DOMContentLoaded", () => {
     pronStartRecordBtn.addEventListener("click", async () => {
         try {
             pronBlob = null;
-            clearStatus(pronStatusMessage);
+            showStatus("", false);
             await pronRecorder.start();
             pronStartRecordBtn.disabled = true;
             pronStopRecordBtn.disabled = false;
             pronRecordingIndicator.classList.remove("hidden");
             pronAudioFileInput.value = "";
         } catch (err) {
-            showStatus(pronStatusMessage, "Microphone access denied or unavailable.", "error");
+            showStatus("Microphone access denied or unavailable.", true);
         }
     });
 
@@ -591,13 +615,13 @@ document.addEventListener("DOMContentLoaded", () => {
         pronStartRecordBtn.disabled = false;
         pronStopRecordBtn.disabled = true;
         pronRecordingIndicator.classList.add("hidden");
-        showStatus(pronStatusMessage, "Spoken attempt captured! Click 'Assess Pronunciation'.", "info");
+        showStatus("Spoken attempt captured! Click 'Assess Pronunciation'.", false);
     });
 
     pronAssessSubmitBtn.addEventListener("click", async () => {
         const referenceText = pronReferenceText.value.trim();
         if (!referenceText) {
-            showStatus(pronStatusMessage, "Please enter reference text to assess against.", "error");
+            showStatus("Please enter reference text to assess against.", true);
             pronReferenceText.focus();
             return;
         }
@@ -605,28 +629,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const fileToSend = pronAudioFileInput.files.length ? pronAudioFileInput.files[0] : (pronBlob ? new File([pronBlob], "attempt.wav", { type: "audio/wav" }) : null);
 
         if (!fileToSend) {
-            showStatus(pronStatusMessage, "Please record or upload your speech attempt.", "error");
+            showStatus("Please record or upload your speech attempt.", true);
             return;
         }
 
         pronAssessSubmitBtn.disabled = true;
         clearPronBtn.disabled = true;
         pronAssessSubmitBtn.innerHTML = '<span class="btn-icon">⏳</span> Scoring...';
-        showStatus(pronStatusMessage, "Assessing pronunciation with Azure Cognitive Services...", "info");
-
-        const formData = new FormData();
-        formData.append("audio", fileToSend, fileToSend.name || "attempt.wav");
-        formData.append("reference_text", referenceText);
+        showStatus("Assessing pronunciation with Azure Cognitive Services...", false);
 
         try {
-            const response = await fetch("/api/pronunciation-assessment", {
-                method: "POST",
-                body: formData
-            });
-
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.error || "Pronunciation assessment failed.");
-
+            const data = await apiPronunciationAssessment(fileToSend, referenceText);
             scoreOverall.textContent = data.pronunciation_score;
             scoreAccuracy.textContent = data.accuracy_score;
             scoreFluency.textContent = data.fluency_score;
@@ -634,10 +647,9 @@ document.addEventListener("DOMContentLoaded", () => {
             pronRecognizedText.textContent = data.recognized_text || "No speech recognized.";
 
             pronOutputSection.classList.remove("hidden");
-            showStatus(pronStatusMessage, "✓ Pronunciation assessment completed successfully!", "success");
-
+            showStatus("Pronunciation assessment completed successfully!", false);
         } catch (error) {
-            showStatus(pronStatusMessage, `⚠ ${error.message}`, "error");
+            showStatus(error.message, true);
         } finally {
             pronAssessSubmitBtn.disabled = false;
             clearPronBtn.disabled = false;
@@ -648,7 +660,7 @@ document.addEventListener("DOMContentLoaded", () => {
     clearPronBtn.addEventListener("click", () => {
         pronAudioFileInput.value = "";
         pronBlob = null;
-        clearStatus(pronStatusMessage);
+        showStatus("", false);
         pronOutputSection.classList.add("hidden");
         pronRecordingIndicator.classList.add("hidden");
         pronStartRecordBtn.disabled = false;
