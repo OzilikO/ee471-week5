@@ -1,7 +1,7 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // ========================================================
+    // =========================================================
     // Tab Switching Logic
-    // ========================================================
+    // =========================================================
     const tabTtsBtn = document.getElementById("tabTtsBtn");
     const tabSttBtn = document.getElementById("tabSttBtn");
     const ttsPanel = document.getElementById("ttsPanel");

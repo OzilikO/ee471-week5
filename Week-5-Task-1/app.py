@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 import azure.cognitiveservices.speech as speechsdk
 
-# Determine base directory and load .env file
+# Determine base directory and load the .env file
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
 load_dotenv(dotenv_path=ENV_PATH)
