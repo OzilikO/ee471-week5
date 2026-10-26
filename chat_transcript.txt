@@ -1,0 +1,34 @@
+=== CHAT TRANSCRIPTION & SESSION SUMMARY ===
+
+[Task 1 - Part 0: Environment Setup & Security]
+- Configured `.env` file for SPEECH_KEY and SPEECH_REGION.
+- Updated `.gitignore` to exclude sensitive environment files and cache files.
+- Installed required dependencies: python-dotenv, flask, azure-cognitiveservices-speech.
+- Verified environment configuration via test script.
+
+[Task 1 - Part 1: Text-to-Speech Implementation]
+- Created Git branch `text-to-speech`.
+- Built Flask backend API endpoint (`/api/text-to-speech`) using Azure Speech SDK.
+- Constructed front-end UI matching the assignment mockup.
+- Resolved GitHub authentication requirements using Personal Access Token (PAT).
+- Merged feature branch into `main`.
+
+[Task 1 - Part 2: Speech-to-Text Implementation]
+- Created Git branch `speech-to-text`.
+- Built backend endpoint (`/api/speech-to-text`) for transcribing recorded/uploaded audio.
+- Developed UI panel for audio recording, file upload, and text output display.
+
+[Task 1 - Part 3: Merge Conflict Resolution]
+- Merged `speech-to-text` into `main`, creating merge conflicts.
+- Unified Flask endpoints in `app.py` to support both TTS and STT concurrently.
+- Combined front-end layouts into a single dashboard in `index.html` and `script.js`.
+
+[Task 1 - Part 4: Supplementary Features & Repository Cleanup]
+- Extended application with speech translation, speaker diarization, and pronunciation assessment endpoints.
+- Identified and eliminated code redundancies, duplicate `app.run()` calls, and unnecessary test files.
+- Formulated refactoring prompts for AI agent (Antigravity).
+
+[Task 2: Voice-Activated Calculator]
+- Initialized `Week-5-Task-2` directory.
+- Defined voice command table mappings for digits, operators, and equals commands.
+- Configured STT voice input via microphone button and TTS audible feedback for magical button clicks.
