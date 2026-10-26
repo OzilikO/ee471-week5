@@ -3,29 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azure Speech Services | Text & Speech</title>
+    <title>Azure Speech Services | Enhanced Studio</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <main class="card-container">
-        <!-- Header matching Azure Speech Services mockup -->
+        <!-- Header -->
         <header class="app-header">
             <div class="title-row">
                 <span class="icon">🎙</span>
                 <h1>Azure Speech Services</h1>
             </div>
-            <p class="subtitle">Text-to-Speech & Speech-to-Text powered by Azure Cognitive Services</p>
+            <p class="subtitle">TTS, STT, Translation, Diarization & Pronunciation Assessment</p>
         </header>
 
         <!-- Navigation Tabs -->
         <nav class="tabs-nav" aria-label="Feature Tabs">
-            <button id="tabTtsBtn" class="tab-btn active" type="button">Text to Speech</button>
-            <button id="tabSttBtn" class="tab-btn" type="button">Speech to Text</button>
+            <button id="tabTtsBtn" class="tab-btn active" type="button">🔊 TTS</button>
+            <button id="tabSttBtn" class="tab-btn" type="button">🎙 STT</button>
+            <button id="tabTransBtn" class="tab-btn" type="button">🌐 Translation</button>
+            <button id="tabDiarBtn" class="tab-btn" type="button">👥 Diarization</button>
+            <button id="tabPronBtn" class="tab-btn" type="button">🎯 Pronunciation</button>
         </nav>
 
-        <!-- =========================================== -->
-        <!-- Section 1: Text-to-Speech                  -->
-        <!-- =========================================== -->
+        <!-- ========================================== -->
+        <!-- 1. Text-to-Speech Panel                    -->
+        <!-- ========================================== -->
         <section id="ttsPanel" class="tab-panel" aria-labelledby="tabTtsBtn">
             <div class="form-section">
                 <label for="textInput">Enter text to convert to speech:</label>
@@ -35,16 +38,12 @@
                     <button id="synthesizeBtn" class="btn btn-primary" type="button">
                         <span class="btn-icon">🔊</span> Synthesize Speech
                     </button>
-                    <button id="clearTtsBtn" class="btn btn-secondary" type="button">
-                        Clear
-                    </button>
+                    <button id="clearTtsBtn" class="btn btn-secondary" type="button">Clear</button>
                 </div>
             </div>
 
-            <!-- TTS Status Banner -->
             <div id="ttsStatusMessage" class="status-box hidden" role="status"></div>
 
-            <!-- TTS Audio Output -->
             <div id="audioSection" class="audio-section hidden">
                 <h2>Generated Audio:</h2>
                 <div class="audio-player-wrapper">
@@ -57,13 +56,12 @@
         </section>
 
         <!-- ========================================== -->
-        <!-- Section 2: Speech-to-Text                  -->
+        <!-- 2. Speech-to-Text Panel                    -->
         <!-- ========================================== -->
         <section id="sttPanel" class="tab-panel hidden" aria-labelledby="tabSttBtn">
             <div class="form-section">
                 <label>Record or upload audio to convert to text:</label>
 
-                <!-- Recording & File Selection Controls -->
                 <div class="stt-controls-row">
                     <button id="startRecordBtn" class="btn btn-record" type="button">
                         <span class="btn-icon">🎤</span> Start Recording
@@ -76,35 +74,232 @@
                     </div>
                 </div>
 
-                <!-- Active Recording Indicator -->
                 <div id="recordingIndicator" class="recording-badge hidden">
                     <span class="recording-dot"></span> Recording...
                 </div>
 
-                <!-- Action Buttons -->
                 <div class="button-row">
                     <button id="transcribeBtn" class="btn btn-primary" type="button">
                         <span class="btn-icon">🎙</span> Transcribe Audio
                     </button>
-                    <button id="clearSttBtn" class="btn btn-secondary" type="button">
-                        Clear
-                    </button>
+                    <button id="clearSttBtn" class="btn btn-secondary" type="button">Clear</button>
                 </div>
             </div>
 
-            <!-- Transcription Output Container -->
             <div id="transcriptionSection" class="transcription-section hidden">
                 <h2>Transcription:</h2>
                 <div class="transcription-box">
                     <p id="transcriptionText" class="transcription-content"></p>
-                    <button id="copyTextBtn" class="btn btn-copy" type="button" title="Copy text to clipboard">
+                    <button id="copyTextBtn" class="btn btn-copy" type="button">
                         <span class="btn-icon">📋</span> Copy Text
                     </button>
                 </div>
             </div>
 
-            <!-- STT Status Banner -->
             <div id="sttStatusMessage" class="status-box hidden" role="status"></div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 3. Speech Translation Panel (Part 4)       -->
+        <!-- ========================================== -->
+        <section id="transPanel" class="tab-panel hidden" aria-labelledby="tabTransBtn">
+            <div class="form-section">
+                <div class="grid-two-cols">
+                    <div>
+                        <label for="transSourceLang">Source Language:</label>
+                        <select id="transSourceLang" class="form-select">
+                            <option value="en-US">English (US)</option>
+                            <option value="tr-TR">Turkish (TR)</option>
+                            <option value="de-DE">German (DE)</option>
+                            <option value="es-ES">Spanish (ES)</option>
+                            <option value="fr-FR">French (FR)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="transTargetLang">Target Language:</label>
+                        <select id="transTargetLang" class="form-select">
+                            <option value="tr" selected>Turkish (tr)</option>
+                            <option value="de">German (de)</option>
+                            <option value="es">Spanish (es)</option>
+                            <option value="fr">French (fr)</option>
+                            <option value="it">Italian (it)</option>
+                            <option value="ru">Russian (ru)</option>
+                            <option value="ja">Japanese (ja)</option>
+                            <option value="zh-Hans">Chinese (zh-Hans)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="sub-tabs-row">
+                    <button id="transModeAudioBtn" class="sub-tab-btn active" type="button">Audio Input</button>
+                    <button id="transModeTextBtn" class="sub-tab-btn" type="button">Text Input</button>
+                </div>
+
+                <!-- Translation via Audio -->
+                <div id="transAudioSection">
+                    <div class="stt-controls-row">
+                        <button id="transStartRecordBtn" class="btn btn-record" type="button">
+                            <span class="btn-icon">🎤</span> Start Recording
+                        </button>
+                        <button id="transStopRecordBtn" class="btn btn-stop" type="button" disabled>
+                            <span class="btn-icon">⏹</span> Stop Recording
+                        </button>
+                        <div class="file-input-wrapper">
+                            <input id="transAudioFileInput" type="file" accept="audio/*,.wav,.mp3">
+                        </div>
+                    </div>
+                    <div id="transRecordingIndicator" class="recording-badge hidden">
+                        <span class="recording-dot"></span> Recording...
+                    </div>
+                </div>
+
+                <!-- Translation via Text -->
+                <div id="transTextSection" class="hidden">
+                    <label for="transTextInput">Enter source text to translate:</label>
+                    <textarea id="transTextInput" placeholder="Enter text to translate..." rows="3"></textarea>
+                </div>
+
+                <div class="button-row">
+                    <button id="translateSubmitBtn" class="btn btn-primary" type="button">
+                        <span class="btn-icon">🌐</span> Translate
+                    </button>
+                    <button id="clearTransBtn" class="btn btn-secondary" type="button">Clear</button>
+                </div>
+            </div>
+
+            <div id="transStatusMessage" class="status-box hidden" role="status"></div>
+
+            <div id="transOutputSection" class="transcription-section hidden">
+                <h2>Source Speech Recognized:</h2>
+                <div class="transcription-box">
+                    <p id="transSourceText" class="transcription-content"></p>
+                </div>
+
+                <h2 style="margin-top: 14px;">Translated Result:</h2>
+                <div class="transcription-box">
+                    <p id="transResultText" class="transcription-content font-bold"></p>
+                    <button id="copyTransBtn" class="btn btn-copy" type="button">
+                        <span class="btn-icon">📋</span> Copy Translation
+                    </button>
+                </div>
+
+                <div id="transAudioPlayerWrapper" class="audio-section" style="margin-top: 14px;">
+                    <h2>Translated Speech Audio:</h2>
+                    <div class="audio-player-wrapper">
+                        <audio id="transAudioPlayer" controls></audio>
+                    </div>
+                    <a id="downloadTransAudioBtn" class="btn btn-download" href="#" download="translated_speech.wav">
+                        <span class="btn-icon">⬇</span> Download Translated Audio
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 4. Conversation Diarization Panel (Part 4) -->
+        <!-- ========================================== -->
+        <section id="diarPanel" class="tab-panel hidden" aria-labelledby="tabDiarBtn">
+            <div class="form-section">
+                <label>Upload or record multi-speaker audio to transcribe with speaker labels:</label>
+
+                <div class="stt-controls-row">
+                    <button id="diarStartRecordBtn" class="btn btn-record" type="button">
+                        <span class="btn-icon">🎤</span> Start Recording
+                    </button>
+                    <button id="diarStopRecordBtn" class="btn btn-stop" type="button" disabled>
+                        <span class="btn-icon">⏹</span> Stop Recording
+                    </button>
+                    <div class="file-input-wrapper">
+                        <input id="diarAudioFileInput" type="file" accept="audio/*,.wav,.mp3">
+                    </div>
+                </div>
+
+                <div id="diarRecordingIndicator" class="recording-badge hidden">
+                    <span class="recording-dot"></span> Recording...
+                </div>
+
+                <div class="button-row">
+                    <button id="diarizeSubmitBtn" class="btn btn-primary" type="button">
+                        <span class="btn-icon">👥</span> Run Diarization
+                    </button>
+                    <button id="clearDiarBtn" class="btn btn-secondary" type="button">Clear</button>
+                </div>
+            </div>
+
+            <div id="diarStatusMessage" class="status-box hidden" role="status"></div>
+
+            <div id="diarOutputSection" class="transcription-section hidden">
+                <h2>Speaker-Tagged Conversation:</h2>
+                <div id="diarTranscriptList" class="diarization-container"></div>
+                <button id="copyDiarBtn" class="btn btn-copy" type="button" style="margin-top: 10px;">
+                    <span class="btn-icon">📋</span> Copy Full Transcript
+                </button>
+            </div>
+        </section>
+
+        <!-- ========================================== -->
+        <!-- 5. Pronunciation Assessment Panel (Part 4) -->
+        <!-- ========================================== -->
+        <section id="pronPanel" class="tab-panel hidden" aria-labelledby="tabPronBtn">
+            <div class="form-section">
+                <label for="pronReferenceText">Reference Text to Pronounce:</label>
+                <textarea id="pronReferenceText" placeholder="The quick brown fox jumps over the lazy dog." rows="2">The quick brown fox jumps over the lazy dog.</textarea>
+
+                <label style="margin-top: 10px;">Record or upload your spoken attempt:</label>
+                <div class="stt-controls-row">
+                    <button id="pronStartRecordBtn" class="btn btn-record" type="button">
+                        <span class="btn-icon">🎤</span> Start Recording
+                    </button>
+                    <button id="pronStopRecordBtn" class="btn btn-stop" type="button" disabled>
+                        <span class="btn-icon">⏹</span> Stop Recording
+                    </button>
+                    <div class="file-input-wrapper">
+                        <input id="pronAudioFileInput" type="file" accept="audio/*,.wav,.mp3">
+                    </div>
+                </div>
+
+                <div id="pronRecordingIndicator" class="recording-badge hidden">
+                    <span class="recording-dot"></span> Recording...
+                </div>
+
+                <div class="button-row">
+                    <button id="pronAssessSubmitBtn" class="btn btn-primary" type="button">
+                        <span class="btn-icon">🎯</span> Assess Pronunciation
+                    </button>
+                    <button id="clearPronBtn" class="btn btn-secondary" type="button">Clear</button>
+                </div>
+            </div>
+
+            <div id="pronStatusMessage" class="status-box hidden" role="status"></div>
+
+            <div id="pronOutputSection" class="transcription-section hidden">
+                <h2>Assessment Results:</h2>
+
+                <!-- Score Badges Grid -->
+                <div class="scores-grid">
+                    <div class="score-card score-overall">
+                        <span class="score-label">Overall Score</span>
+                        <span id="scoreOverall" class="score-number">-</span>
+                    </div>
+                    <div class="score-card">
+                        <span class="score-label">Accuracy</span>
+                        <span id="scoreAccuracy" class="score-number">-</span>
+                    </div>
+                    <div class="score-card">
+                        <span class="score-label">Fluency</span>
+                        <span id="scoreFluency" class="score-number">-</span>
+                    </div>
+                    <div class="score-card">
+                        <span class="score-label">Completeness</span>
+                        <span id="scoreCompleteness" class="score-number">-</span>
+                    </div>
+                </div>
+
+                <div class="transcription-box" style="margin-top: 14px;">
+                    <span class="score-label" style="margin-bottom: 4px; display:block;">Spoken Words Recognized:</span>
+                    <p id="pronRecognizedText" class="transcription-content"></p>
+                </div>
+            </div>
         </section>
     </main>
 
