@@ -3,51 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Text-to-Speech | Azure Cognitive Services</title>
+    <title>Azure Speech Services | Text & Speech</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
     <main class="card-container">
-        <!-- Header -->
+        <!-- Header matching Azure Speech Services mockup -->
         <header class="app-header">
             <div class="title-row">
-                <span class="icon">📢</span>
-                <h1>Text-to-Speech</h1>
+                <span class="icon">🎙</span>
+                <h1>Azure Speech Services</h1>
             </div>
-            <p class="subtitle">Powered by Azure Cognitive Services</p>
+            <p class="subtitle">Text-to-Speech & Speech-to-Text powered by Azure Cognitive Services</p>
         </header>
 
-        <!-- Input Area -->
-        <section class="form-section">
-            <label for="textInput">Enter text to convert to speech:</label>
-            <textarea id="textInput" placeholder="Hello, EE471 class" rows="4"></textarea>
+        <!-- Navigation Tabs -->
+        <nav class="tabs-nav" aria-label="Feature Tabs">
+            <button id="tabTtsBtn" class="tab-btn active" type="button">Text to Speech</button>
+            <button id="tabSttBtn" class="tab-btn" type="button">Speech to Text</button>
+        </nav>
 
-            <div class="button-row">
-                <button id="synthesizeBtn" class="btn btn-primary" type="button">
-                    <span class="btn-icon">🔊</span> Synthesize Speech
-                </button>
-                <button id="clearBtn" class="btn btn-secondary" type="button">
-                    Clear
-                </button>
+        <!-- ========================================== -->
+        <!-- Section 1: Text-to-Speech                  -->
+        <!-- ========================================== -->
+        <section id="ttsPanel" class="tab-panel" aria-labelledby="tabTtsBtn">
+            <div class="form-section">
+                <label for="textInput">Enter text to convert to speech:</label>
+                <textarea id="textInput" placeholder="Hello, EE471 class" rows="4"></textarea>
+
+                <div class="button-row">
+                    <button id="synthesizeBtn" class="btn btn-primary" type="button">
+                        <span class="btn-icon">🔊</span> Synthesize Speech
+                    </button>
+                    <button id="clearTtsBtn" class="btn btn-secondary" type="button">
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- TTS Status Banner -->
+            <div id="ttsStatusMessage" class="status-box hidden" role="status"></div>
+
+            <!-- TTS Audio Output -->
+            <div id="audioSection" class="audio-section hidden">
+                <h2>Generated Audio:</h2>
+                <div class="audio-player-wrapper">
+                    <audio id="audioPlayer" controls></audio>
+                </div>
+                <a id="downloadBtn" class="btn btn-download" href="#" download="synthesized_speech.wav">
+                    <span class="btn-icon">⬇</span> Download Audio
+                </a>
             </div>
         </section>
 
-        <!-- Status Message Banner -->
-        <div id="statusMessage" class="status-box hidden" role="status"></div>
+        <!-- ========================================== -->
+        <!-- Section 2: Speech-to-Text                  -->
+        <!-- ========================================== -->
+        <section id="sttPanel" class="tab-panel hidden" aria-labelledby="tabSttBtn">
+            <div class="form-section">
+                <label>Record or upload audio to convert to text:</label>
 
-        <!-- Audio Output Section -->
-        <section id="audioSection" class="audio-section hidden">
-            <h2>Generated Audio:</h2>
-            <div class="audio-player-wrapper">
-                <audio id="audioPlayer" controls></audio>
+                <!-- Recording & File Selection Controls -->
+                <div class="stt-controls-row">
+                    <button id="startRecordBtn" class="btn btn-record" type="button">
+                        <span class="btn-icon">🎤</span> Start Recording
+                    </button>
+                    <button id="stopRecordBtn" class="btn btn-stop" type="button" disabled>
+                        <span class="btn-icon">⏹</span> Stop Recording
+                    </button>
+                    <div class="file-input-wrapper">
+                        <input id="audioFileInput" type="file" accept="audio/*,.wav,.mp3">
+                    </div>
+                </div>
+
+                <!-- Active Recording Indicator -->
+                <div id="recordingIndicator" class="recording-badge hidden">
+                    <span class="recording-dot"></span> Recording...
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="button-row">
+                    <button id="transcribeBtn" class="btn btn-primary" type="button">
+                        <span class="btn-icon">🎙</span> Transcribe Audio
+                    </button>
+                    <button id="clearSttBtn" class="btn btn-secondary" type="button">
+                        Clear
+                    </button>
+                </div>
             </div>
-            <a id="downloadBtn" class="btn btn-download" href="#" download="synthesized_speech.wav">
-                <span class="btn-icon">⬇</span> Download Audio
-            </a>
+
+            <!-- Transcription Output Container -->
+            <div id="transcriptionSection" class="transcription-section hidden">
+                <h2>Transcription:</h2>
+                <div class="transcription-box">
+                    <p id="transcriptionText" class="transcription-content"></p>
+                    <button id="copyTextBtn" class="btn btn-copy" type="button" title="Copy text to clipboard">
+                        <span class="btn-icon">📋</span> Copy Text
+                    </button>
+                </div>
+            </div>
+
+            <!-- STT Status Banner -->
+            <div id="sttStatusMessage" class="status-box hidden" role="status"></div>
         </section>
     </main>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
 </body>
 </html>
-
