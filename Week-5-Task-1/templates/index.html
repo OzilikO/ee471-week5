@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text-to-Speech | Azure Cognitive Services</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="card-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="title-row">
+                <span class="icon">📢</span>
+                <h1>Text-to-Speech</h1>
+            </div>
+            <p class="subtitle">Powered by Azure Cognitive Services</p>
+        </header>
+
+        <!-- Input Area -->
+        <section class="form-section">
+            <label for="textInput">Enter text to convert to speech:</label>
+            <textarea id="textInput" placeholder="Hello, EE471 class" rows="4"></textarea>
+
+            <div class="button-row">
+                <button id="synthesizeBtn" class="btn btn-primary" type="button">
+                    <span class="btn-icon">🔊</span> Synthesize Speech
+                </button>
+                <button id="clearBtn" class="btn btn-secondary" type="button">
+                    Clear
+                </button>
+            </div>
+        </section>
+
+        <!-- Status Message Banner -->
+        <div id="statusMessage" class="status-box hidden" role="status"></div>
+
+        <!-- Audio Output Section -->
+        <section id="audioSection" class="audio-section hidden">
+            <h2>Generated Audio:</h2>
+            <div class="audio-player-wrapper">
+                <audio id="audioPlayer" controls></audio>
+            </div>
+            <a id="downloadBtn" class="btn btn-download" href="#" download="synthesized_speech.wav">
+                <span class="btn-icon">⬇</span> Download Audio
+            </a>
+        </section>
+    </main>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
+
